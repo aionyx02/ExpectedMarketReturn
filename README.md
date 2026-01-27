@@ -196,5 +196,4 @@ FRED (Federal Reserve Economic Data)
 
 Yahoo Finance (yfinance)
 
-Best-README-Template
 <p align="right">(<a href="#readme-top">back to top</a>)</p> 
