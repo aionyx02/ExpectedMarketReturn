@@ -106,7 +106,7 @@ def run_backtest():
 
     print("="*50 + "\n")
 
-    # 7. 畫圖 (使用 Log Scale 對數座標，因為複利很可怕)
+    # 7. 畫圖
     plt.figure(figsize=(12, 6))
     plt.plot(df["date"], df["benchmark_equity"], label="S&P 500 (1x)", color="gray", linestyle="--", alpha=0.6)
     plt.plot(df["date"], df["strategy_equity"], label="MVP Dynamic (0x-2x)", color="red", linewidth=2)
