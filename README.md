@@ -1,124 +1,169 @@
 <a id="readme-top"></a>
+
 ---
 
 [![Contributors](https://img.shields.io/github/contributors/aionyx02/ExpectedMarketReturn.svg?style=for-the-badge)](https://github.com/aionyx02/ExpectedMarketReturn/graphs/contributors)
 [![Forks](https://img.shields.io/github/forks/aionyx02/ExpectedMarketReturn.svg?style=for-the-badge)](https://github.com/aionyx02/ExpectedMarketReturn/network/members)
 [![Stars](https://img.shields.io/github/stars/aionyx02/ExpectedMarketReturn.svg?style=for-the-badge)](https://github.com/aionyx02/ExpectedMarketReturn/stargazers)
 [![License](https://img.shields.io/github/license/aionyx02/ExpectedMarketReturn.svg?style=for-the-badge)](https://github.com/aionyx02/ExpectedMarketReturn/blob/master/LICENSE)
-[![LinkedIn](https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555)](https://linkedin.com/)
 
 <br />
+
 <div align="center">
   <h3 align="center">Expected Market Return</h3>
 
   <p align="center">
-    A quantitative investment strategy pipeline leveraging macroeconomic data and technical analysis to optimize market returns via dynamic leverage.
+    MVP Quant Pipeline — A quantitative investment decision system integrating macro risk and market breadth.
     <br />
     <a href="https://github.com/aionyx02/ExpectedMarketReturn"><strong>Explore the docs »</strong></a>
-    <br />
-    <br />
+    <br /><br />
     <a href="https://github.com/aionyx02/ExpectedMarketReturn">View Demo</a>
-    &middot;
+    ·
     <a href="https://github.com/aionyx02/ExpectedMarketReturn/issues">Report Bug</a>
-    &middot;
+    ·
     <a href="https://github.com/aionyx02/ExpectedMarketReturn/issues">Request Feature</a>
   </p>
 </div>
 
+---
+
 <details>
   <summary>Table of Contents</summary>
   <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-      <ul>
-        <li><a href="#built-with">Built With</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
+    <li><a href="#about-the-project">About The Project</a></li>
+    <li><a href="#key-features">Key Features</a></li>
+    <li><a href="#methodology">Methodology</a></li>
+    <li><a href="#built-with">Built With</a></li>
+    <li><a href="#getting-started">Getting Started</a></li>
     <li><a href="#usage">Usage</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
   </ol>
 </details>
 
+---
+
 ## About The Project
 
-**ExpectedMarketReturn** is a Python-based quantitative finance pipeline designed to solve the problem of emotional investing. It combines macroeconomic liquidity indicators (M2, GDP) with technical trend analysis to generate actionable trading signals.
+**ExpectedMarketReturn** is a Python-based quantitative finance pipeline designed to mitigate emotional investing through objective data analysis.
 
-The core philosophy is simple: **Increase leverage when the macro environment is safe and the trend is up; protect capital when risks are high.**
-<img width="2097" height="1135" alt="螢幕擷取畫面 2026-01-27 133104" src="https://github.com/user-attachments/assets/8ba42048-c996-41e7-ae0a-04f2a97164f8" />
-<img width="1795" height="989" alt="螢幕擷取畫面 2026-01-27 133026" src="https://github.com/user-attachments/assets/c49a5680-bd34-459a-b2af-2fd67e56fa5a" />
-### Key Features
+The core philosophy:
 
-* **Real-World Data Integration**: Fetches live macroeconomic data from **FRED** (Federal Reserve Economic Data) and market data from **Yahoo Finance**.
-* **Scientific Gap Filling (Mean Reversion)**: Utilizes a **Mean Reversion** algorithm to intelligently bridge the gap between lagged real-world data (e.g., 2025) and the current system date. This prevents "look-ahead bias" while providing realistic simulations.
-* **Dynamic Leverage Strategy**: Implements a strategy that automatically switches between:
-    * **2x Bull**: (e.g., SSO/Futures) when Macro is safe + Trend is up.
-    * **1x Neutral**: (e.g., SPY) when market is uncertain.
-    * **0x Bear**: (e.g., Cash/SHV) when risks are high.
-* **Automated Diagnosis**: Generates a console-based market diagnosis report and visualizes backtest performance against the S&P 500 benchmark.
+> **Increase leverage when the macro environment is safe and the trend is positive;  
+> reduce exposure when risks accumulate.**
+
+The system integrates macro liquidity indicators (FRED), market performance (Yahoo Finance), and market breadth diagnostics.
+
+<img width="2096" height="1142" alt="螢幕擷取畫面 2026-01-27 185542" src="https://github.com/user-attachments/assets/b88a033b-6b62-41fa-83db-465fb590a40a" />
+<img width="1803" height="995" alt="螢幕擷取畫面 2026-01-27 185600" src="https://github.com/user-attachments/assets/b834e870-2ed6-442e-a6e4-d2366ff606ff" />
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-### Built With
+---
 
-This project utilizes a modern Python data science stack:
+## Key Features
 
-* [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-* [![Pandas](https://img.shields.io/badge/Pandas-150458?style=for-the-badge&logo=pandas&logoColor=white)](https://pandas.pydata.org/)
-* [![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white)](https://numpy.org/)
-* [![Matplotlib](https://img.shields.io/badge/Matplotlib-ffffff?style=for-the-badge&logo=matplotlib&logoColor=black)](https://matplotlib.org/)
+* **Multi-source Data Integration**  
+  Combines FRED macroeconomic indicators (interest rates, labor market) with Yahoo Finance market returns and market breadth metrics.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+* **Dynamic Leverage Decision Engine**  
+  Automatically outputs:
+    * **2x Bull**
+    * **1x Neutral**
+    * **0x Bear**
 
-## Getting Started
+* **Scientific Gap Filling (Mean Reversion)**  
+  Uses a mean-reversion mechanism to handle macro data release delays and avoid look-ahead bias.
 
-To get a local copy up and running, follow these simple steps.
-
-### Prerequisites
-
-You need Python 3.10 or higher installed on your machine. This project utilizes `uv` for package management, but standard `pip` works perfectly as well.
-
-### Installation
-
-1.  Clone the repo
-    ```sh
-    git clone [https://github.com/aionyx02/ExpectedMarketReturn.git](https://github.com/aionyx02/ExpectedMarketReturn.git)
-    ```
-2.  Navigate to the project directory
-    ```sh
-    cd ExpectedMarketReturn
-    ```
-3.  Install dependencies
-    ```sh
-    pip install pandas numpy matplotlib yfinance scipy python-dateutil
-    ```
-    *(Or if you use `uv`, simply run `uv sync`)*
+* **Nowcasting Market Regime**  
+  Generates daily diagnostic reports providing actionable leverage and allocation guidance.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## Usage
+---
 
-Run the main pipeline to fetch data, calculate signals, and generate the report:
-Expected Output: The script will output a console report diagnosing the current market status and generate a visualization chart in a pop-up window.
+## Methodology
+
+The core predictive framework is **MVB (Macro–Valuation–Breadth)**.
+
+### 1. Macro Risk Adjustment (Macro Factor)
+
+The system monitors:
+
+- 10Y–2Y yield spread
+- Unemployment claims trend
+
+When yield spreads compress or employment weakens, the macro coefficient is reduced from `1.0`, compressing expected returns and shifting the system to defensive positioning.
+
+---
+
+### 2. Market Breadth Diagnosis
+
+Designed to detect index fragility.
+
+We compare:
+
+- **Cap-weighted indices**
+- **Equal-weighted indices**
+
+Logic:
+
+- **Broad participation** → leverage allowed
+- **Narrow leadership** → signal classified as `FRAGILE`, leverage reduced to avoid structural risk
+
+---
+
+### 3. Data Gap Filling: Mean Reversion
+
+Because FRED data is delayed (1–4 weeks), a simplified Ornstein–Uhlenbeck process is applied:
+
+```math
+X_{t+1} = X_t + \kappa(\theta - X_t)\Delta t
+```
+This ensures missing macro values converge smoothly to long-term equilibrium $\theta$ instead of producing extreme bias.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+Built With
+
+Python
+
+Pandas
+
+NumPy
+
+Matplotlib
+
+yfinance
+
+scipy
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+Getting Started
+Prerequisites
+
+Python 3.10+
+
+pip or uv
+
+Installation
+
+```sh
+git clone https://github.com/aionyx02/ExpectedMarketReturn.git
+cd ExpectedMarketReturn
+pip install pandas numpy matplotlib yfinance scipy python-dateutil
+```
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+Usage
 ```sh
 python main.py
-==========================================
- MVP Quant Pipeline: Scientific Trend Projection
- Target Date : 2026-01-27 (Auto-Detected)
-==========================================
-...
-[Step 7] Analyzing Market Status...
-
+```
+Expected output:
+```
 ============================================================
  【量化模型：市場診斷報告 】
 ============================================================
@@ -140,68 +185,80 @@ python main.py
 ==================================================
 指標 (Metric)          | 大盤 (S&P 500)    | MVP 2x (Strategy)
 ------------------------------------------------------------
-總報酬率 (Total Ret)     | 3769.19%          | 12208.90%
-最大回撤 (Max DD)        | -46.70% (痛!)     | -20.98% (穩)
-夏普比率 (Sharpe)        |   1.35            |   1.44
+總報酬率 (Total Ret)     | 3769.19%          | 18172.18%
+最大回撤 (Max DD)        | -46.70% (痛!)     | -22.47% (穩)
+夏普比率 (Sharpe)        |   1.35            |   1.58
 ------------------------------------------------------------
  恭喜！動態槓桿策略成功【碾壓大盤】！
  關鍵：在牛市開 2 倍加速，在熊市 0 倍保命。
 ==================================================
 
+
+==========================================
+[Step 10] Executing High-Frequency Nowcasting...
+==========================================
+⚠️ 檢測到數據缺失，執行自動填充 (ffill)...
+
+📅 數據基準日: 2026-01-27
+--------------------------------------------------
+📊 模型指標摘要:
+   - 預期年化報酬: 4.66%
+   - 宏觀風險修正: x1.00
+   - 市場廣度狀態: HEALTHY
+--------------------------------------------------
+🎯 修正後預期回報: 4.66%
+
+🚀 【MVP 實戰操作指令】
+--------------------------------------------------
+指令動態：🔵 正常持有 (Neutral/Buy)
+槓桿倍數：1.0x
+建議配置：100% 部位投資於 SPY/VOO，0% 留存現金
+理由詳述：環境穩健但回報空間一般，建議 100% 現貨持倉（SPY/VOO），不開槓桿。
+--------------------------------------------------
 ```
-Roadmap
-[x] MVP Release: Core pipeline with FRED/Yahoo data integration.
-
-[x] Scientific Data Filling: Implemented Mean Reversion for handling data lag.
-
-[x] Project Structure: Optimized project layout and git configuration.
-
-[ ] Docker Support: Containerize the application for cloud deployment.
-
-[ ] Notification System: Integration with Line Bot / Telegram for daily alerts.
-
-[ ] Expanded Indicators:
-
-[ ] VIX (Volatility Index)
-
-[ ] Corporate Earnings (EPS)
-
-[ ] Bitcoin Correlation
-
-See the open issues for a full list of proposed features (and known issues).
+Backtest compares strategy vs S&P 500 with dynamic leverage control.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+Roadmap
+
+MVP pipeline (FRED + Yahoo Finance integration)
+
+Mean Reversion data filling
+
+Market breadth diagnostics
+
+Notification system (Line Bot / Telegram)
+
+Kelly Criterion position sizing
+
+Stress testing (2008, 2020 crash scenarios)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 Contributing
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are greatly appreciated.
 
-Fork the Project
+Contributions are welcome.
 
-Create your Feature Branch (git checkout -b feature/AmazingFeature)
+Fork the project
 
-Commit your Changes (git commit -m 'Add some AmazingFeature')
+Create a branch
 
-Push to the Branch (git push origin feature/AmazingFeature)
+Commit changes
 
 Open a Pull Request
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 License
-Distributed under the MIT License. See LICENSE for more information.
+
+Distributed under the MIT License.
+See LICENSE for details.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 Contact
-Aionyx - GitHub Profile
 
-Project Link: https://github.com/aionyx02/ExpectedMarketReturn
+Aionyx — GitHub
+Project Link:
+https://github.com/aionyx02/ExpectedMarketReturn
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-Acknowledgments
-FRED (Federal Reserve Economic Data)
-
-Yahoo Finance (yfinance)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p> 

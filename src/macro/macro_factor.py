@@ -1,3 +1,4 @@
+# src/macro/factor.py
 def calc_macro_factor(excess_liquidity, inverted):
     if inverted or excess_liquidity < 0:
         return 0.3

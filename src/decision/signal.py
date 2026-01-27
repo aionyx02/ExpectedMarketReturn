@@ -1,3 +1,4 @@
+# src/decision/signal.py
 def final_signal(expected_return, macro_factor, breadth):
     final_return = expected_return * macro_factor
 
