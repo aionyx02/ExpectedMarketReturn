@@ -1,21 +1,26 @@
-# src/utils/future_mock.py
-
 import pandas as pd
 import numpy as np
 import os
 from dateutil.relativedelta import relativedelta
-
-def mock_future_data(target_date_str):
+import logging
+from config.path import PathConfig
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s.%(msecs)03d | %(levelname)s | %(name)s | %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+)
+def mock_future_data(target_date_str,
+                     path_macro = PathConfig.MACRO_FACTOR_CSV,
+                     path_market = PathConfig.MARKET_RETURN_CSV):
     """
     使用「均值回歸 (Mean Reversion) & 長期成長」邏輯來填補空白。。
     """
     target_date : pd.Timestamp = pd.to_datetime(target_date_str)
-    print(f" 啟動均值回歸推算：正在將數據平滑延伸至 {target_date.strftime('%Y-%m')}...")
+    logging.info(f" 啟動均值回歸推算：正在將數據平滑延伸至 {target_date.strftime('%Y-%m')}...")
 
     # ---------------------------------------------------------
-    # 1. 補齊 Macro Factors (macro_factor.csv)
+    #  補齊 Macro Factors (macro_factor.csv)
     # ---------------------------------------------------------
-    path_macro = "data/processed/macro_factor.csv"
     if os.path.exists(path_macro):
         df = pd.read_csv(path_macro, parse_dates=["date"])
 
@@ -37,7 +42,7 @@ def mock_future_data(target_date_str):
 
                 next_val = last_val + (target_mean - last_val) * decay_rate
 
-                # 加入微小雜訊
+                # 加入微小雜訊(暫時拔除 提高準確性)
                 #noise = np.random.normal(0, 0.005)
                 #next_val += noise
 
@@ -52,12 +57,11 @@ def mock_future_data(target_date_str):
                 df_mock = pd.DataFrame(new_rows)
                 df = pd.concat([df, df_mock], ignore_index=True)
                 df.to_csv(path_macro, index=False)
-                print(f"    Macro Factor: 已依照均值回歸邏輯推算 (Target: 1.0)")
+                logging.info(f"    Macro Factor: 已依照均值回歸邏輯推算 (Target: 1.0)")
 
     # ---------------------------------------------------------
-    # 2. 補齊 Market Returns (market_return.csv)
+    #  Market Returns (market_return.csv)
     # ---------------------------------------------------------
-    path_market = "data/processed/market_return.csv"
     if os.path.exists(path_market):
         df = pd.read_csv(path_market, parse_dates=["date"])
 
@@ -66,7 +70,7 @@ def mock_future_data(target_date_str):
 
         if last_date < target_date:
             if "Close" not in df.columns:
-                print(" 錯誤: market_return.csv 缺少 Close 欄位")
+                logging.error(" 錯誤: market_return.csv 缺少 Close 欄位")
             else:
                 long_term_growth = 0.0058
 
@@ -104,4 +108,4 @@ def mock_future_data(target_date_str):
                     df_mock = pd.DataFrame(new_rows)
                     df = pd.concat([df, df_mock], ignore_index=True)
                     df.to_csv(path_market, index=False)
-                    print(f" Market Price: 已依照長期成長模型推算")
+                    logging.info(f" Market Price: 已依照長期成長模型推算")

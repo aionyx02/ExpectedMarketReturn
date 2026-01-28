@@ -1,13 +1,12 @@
-# src/macro/macro_factor_calc.py
-
 import pandas as pd
-import numpy as np
 import os
-
-# =========================================================
-#  Part 1: 核心邏輯 (平衡獲利與避險版)
-# =========================================================
-
+import logging
+from config.path import PathConfig
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s.%(msecs)03d | %(levelname)s | %(name)s | %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+)
 def calc_macro_factor_logic(excess_liquidity, yield_spread, pmi=50):
     """
     平衡型宏觀邏輯：
@@ -15,32 +14,32 @@ def calc_macro_factor_logic(excess_liquidity, yield_spread, pmi=50):
     2. 加入 PMI 加分項，當經濟擴張時允許係數突破 1.0 (最高 1.3)。
     """
 
-    # --- 1. 殖利率曲線得分 (精確化) ---
+    #  殖利率曲線得分
     if yield_spread < 0:
         # 倒掛期：極度保守
         spread_score = 0.5 + (yield_spread * 0.5)
     elif yield_spread < 0.2:
-        # 警戒區 (0~0.2%)：快速反應，從 1.0 降至 0.6
+        # 警戒區 (0~0.2%)：從 1.0 降至 0.6
         spread_score = 0.6 + (yield_spread / 0.2) * 0.4
     else:
         # 安全區：1.0x 基準
         spread_score = 1.0
 
-    # --- 2. 流動性得分 ---
+    # 流動性得分
     # 改為較寬鬆的線性邏輯，流動性 > 0% 就不應大幅扣分
     if excess_liquidity > 0:
         liq_score = 0.9 + (excess_liquidity * 5) # 1% 時約 0.95, 2% 時為 1.0
     else:
         liq_score = 0.8 + (excess_liquidity * 10) # 負值時快速扣分
 
-    # --- 3. 經濟擴張獎勵 (PMI) ---
+    #  經濟擴張獎勵 (PMI)
     pmi_bonus = 0
     if pmi > 52:
         pmi_bonus = (pmi - 52) * 0.02 # PMI 60 時加 0.16
     elif pmi < 48:
         pmi_bonus = (pmi - 48) * 0.05 # PMI 40 時扣 0.4
 
-    # --- 4. 綜合權衡 ---
+    #  綜合權衡
     # 取兩者最小值作為底部，再疊加 PMI 獎勵
     base_score = min(spread_score, liq_score)
     final_factor = base_score + pmi_bonus
@@ -49,22 +48,22 @@ def calc_macro_factor_logic(excess_liquidity, yield_spread, pmi=50):
 
 
 # =========================================================
-#  Part 2: 兼容接口 (供 main.py Step 10 呼叫)
+#  兼容接口 (供 main.py Step 10 呼叫)
 # =========================================================
 
 def calculate_macro_factor(current_snapshot):
     """
     對接 main.py Step 10 的字典格式
     """
-    # 1. 取得利差
+    # 取得利差
     y10 = current_snapshot.get('10Y_Yield', 4.0)
     y2 = current_snapshot.get('2Y_Yield', 3.8)
     spread = y10 - y2
 
-    # 2. 取得流動性 (若無則預設為 0.01)
+    # 取得流動性 (若無則預設為 0.01)
     liq = current_snapshot.get('excess_liquidity', 0.01)
 
-    # 3. 取得 PMI
+    #  取得 PMI
     pmi = current_snapshot.get('PMI', 50)
 
     # 執行邏輯
@@ -80,18 +79,17 @@ def calculate_macro_factor(current_snapshot):
 
 
 # =========================================================
-#  Part 3: Pipeline 流程
+#   Pipeline 流程
 # =========================================================
 
-def calc_macro_factor_pipeline():
-    input_path = "data/processed/macro.csv"
-    output_path = "data/processed/macro_factor.csv"
+def calc_macro_factor_pipeline(input_path = None,
+                               output_path = None):
 
     if not os.path.exists(input_path):
-        print(f"⚠️ [Macro] 找不到 {input_path}")
+        logging.warning(f" [Macro] 找不到 {input_path}")
         return
 
-    print("   [Macro] Loading data for historical calculation...")
+    logging.info("   [Macro] Loading data for historical calculation...")
     df = pd.read_csv(input_path)
 
     # 欄位預處理
@@ -118,10 +116,10 @@ def calc_macro_factor_pipeline():
     try:
         output_df = df[["date", "macro_factor"]]
         output_df.to_csv(output_path, index=False)
-        print(f"    [Macro] 成功產生平衡型係數！已儲存至: {output_path}")
-        print(f"    數據預覽 (最新 5 筆):\n{output_df.tail().to_string(index=False)}")
+        logging.info(f"    [Macro] 成功產生平衡型係數！已儲存至: {output_path}")
+        logging.info(f"    數據預覽 (最新 5 筆):\n{output_df.tail().to_string(index=False)}")
     except Exception as e:
-        print(f"   ❌ 存檔失敗: {e}")
+        logging.error(f"    存檔失敗: {e}")
 
 if __name__ == "__main__":
-    calc_macro_factor_pipeline()
+    calc_macro_factor_pipeline(input_path= PathConfig.MACRO_CSV, output_path= PathConfig.MACRO_FACTOR_CSV)

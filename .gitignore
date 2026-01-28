@@ -21,9 +21,7 @@ ExpectedMarketRetrun/  # 如果你的虛擬環境剛好跟專案同名
 # ===========================
 # 你的程式會自動下載和產生數據，不需要上傳 CSV
 # 保持 Repo 乾淨，讓別人下載程式碼自己跑就好
-data/raw/*.csv
-data/processed/*.csv
-*.csv
+
 *.xlsx
 
 # 如果你想保留資料夾結構，但忽略裡面的檔案，可以保留下面這行：
@@ -60,3 +58,4 @@ Desktop.ini
 
 # Mac
 .DS_Store
+
