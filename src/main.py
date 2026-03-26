@@ -223,6 +223,7 @@ def run_pipeline():
     profile = initialize_runtime_profile()
     profile_meta = profile.get("meta", {})
     profile_name = profile_meta.get("name", "default")
+    future_cfg = profile.get("future_mock", {})
 
     target_date_str = datetime.now().strftime("%Y-%m-%d")
     PathConfig.ensure_dir()
@@ -280,11 +281,21 @@ def run_pipeline():
             "[Step 4.5] Breadth update not completed; continue with local cached data."
         )
 
-    logging.info(f"[Step 5] Projecting trend to {target_date_str}...")
-    try:
-        future_mock.mock_future_data(target_date_str=target_date_str)
-    except Exception as exc:
-        logging.warning(f"[Step 5] Future projection skipped: {exc}")
+    future_enabled = bool(future_cfg.get("enabled", False))
+    if future_enabled:
+        logging.info(f"[Step 5] Projecting trend to {target_date_str}...")
+        try:
+            future_mock.mock_future_data(
+                target_date_str=target_date_str,
+                write_back=bool(future_cfg.get("write_back", False)),
+            )
+        except Exception as exc:
+            logging.warning(f"[Step 5] Future projection skipped: {exc}")
+    else:
+        logging.info(
+            "[Step 5] Future projection disabled by profile "
+            "(prevents synthetic data from entering backtests)."
+        )
 
     logging.info("[Step 6] Generating final signals...")
     signal_ok = signal_calc.calc_final_signal_pipeline(

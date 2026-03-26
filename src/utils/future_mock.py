@@ -13,6 +13,7 @@ def mock_future_data(
     target_date_str,
     path_macro=PathConfig.MACRO_FACTOR_PARQUET,
     path_market=PathConfig.MARKET_RETURN_PARQUET,
+    write_back: bool = False,
 ):
     profile = get_runtime_profile()
     macro_cfg = profile.get("future_mock", {}).get("macro", {})
@@ -58,11 +59,17 @@ def mock_future_data(
 
                 if new_rows:
                     df_macro = pd.concat([df_macro, pd.DataFrame(new_rows)], ignore_index=True)
-                    df_macro.to_parquet(path_macro, index=False)
-                    logging.info(
-                        "Macro factor projected via mean-reversion "
-                        f"(target: {macro_target_mean})."
-                    )
+                    if write_back:
+                        df_macro.to_parquet(path_macro, index=False)
+                        logging.info(
+                            "Macro factor projected via mean-reversion "
+                            f"(target: {macro_target_mean})."
+                        )
+                    else:
+                        logging.info(
+                            "[FutureMock] Macro projection generated but not written "
+                            "(write_back=False)."
+                        )
 
     if os.path.exists(path_market):
         df_market = pd.read_parquet(path_market)
@@ -108,5 +115,11 @@ def mock_future_data(
                     df_market = pd.concat(
                         [df_market, pd.DataFrame(new_rows)], ignore_index=True
                     )
-                    df_market.to_parquet(path_market, index=False)
-                    logging.info("Market return series projected for missing months.")
+                    if write_back:
+                        df_market.to_parquet(path_market, index=False)
+                        logging.info("Market return series projected for missing months.")
+                    else:
+                        logging.info(
+                            "[FutureMock] Market projection generated but not written "
+                            "(write_back=False)."
+                        )
