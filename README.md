@@ -159,6 +159,16 @@ Usage
 ```sh
 python main.py
 ```
+Profile customization (global-ready):
+```sh
+# Use default profile
+python src/main.py
+
+# Use a custom profile (PowerShell)
+$env:EMR_PROFILE='profiles/global_default.yaml'; python src/main.py
+```
+You can copy `profiles/global_default.yaml` and change tickers, macro series, thresholds, and leverage rules per market.
+
 Expected output:
 ```
 ==================================================

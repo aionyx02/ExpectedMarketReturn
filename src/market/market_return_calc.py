@@ -4,75 +4,78 @@ import pandas as pd
 import yfinance as yf
 
 from config.path import PathConfig
+from config.profile import get_runtime_profile
 
 
 def calc_market_return_pipeline(output_path=None):
-    logging.info("   [Market] Fetching S&P 500 data from yfinance...")
+    profile = get_runtime_profile()
+    market_cfg = profile.get("market", {})
+    download_cfg = market_cfg.get("download", {})
 
-    #  抓取資料
+    ticker = str(market_cfg.get("index_ticker", "^GSPC"))
+    period = str(download_cfg.get("period", "max"))
+    interval = str(download_cfg.get("interval", "1mo"))
+    bias_window = int(market_cfg.get("bias_ma_window", 24))
+    trend_window = int(market_cfg.get("trend_ma_window", 10))
+    base_return = float(market_cfg.get("base_return", 0.08))
+    sensitivity = float(market_cfg.get("sensitivity", 0.2))
+    expected_fallback = float(market_cfg.get("expected_return_fallback", base_return))
+
+    logging.info(f"[Market] Fetching {ticker} data from yfinance...")
+
     try:
-        sp500 = yf.download("^GSPC", period="max", interval="1mo", progress=False)
-    except Exception as e:
-        logging.error(f" 下載失敗: {e}")
-        return
+        market_df = yf.download(
+            ticker, period=period, interval=interval, progress=False
+        )
+    except Exception as exc:
+        logging.error(f"[Market] Download failed for {ticker}: {exc}")
+        return False
 
-    if sp500.empty:
-        logging.error(" 錯誤: 下載到的資料為空 (Empty DataFrame)")
-        return
+    if market_df.empty:
+        logging.error("[Market] Download returned an empty DataFrame.")
+        return False
 
-    # 檢查是否為 MultiIndex
-    if isinstance(sp500.columns, pd.MultiIndex):
-        try:
-            cols = list(sp500)
+    if isinstance(market_df.columns, pd.MultiIndex):
+        market_df.columns = [col[0] for col in list(market_df.columns)]
 
-            if any("Close" in str(c) for c in cols):
-                sp500.columns = [c[0] for c in cols]
-
-        except Exception as e:
-            logging.error(f"欄位攤平發生錯誤: {e}")
-
-    current_cols = list(sp500)
-
-    if "Close" not in current_cols:
-        if "Adj Close" in current_cols:
-            sp500.rename(columns={"Adj Close": "Close"}, inplace=True)
+    cols = list(market_df.columns)
+    if "Close" not in cols:
+        if "Adj Close" in cols:
+            market_df.rename(columns={"Adj Close": "Close"}, inplace=True)
         else:
-            logging.error(f" 嚴重錯誤: 找不到 Close 欄位。目前的欄位是: {current_cols}")
-            return
+            logging.error(f"[Market] Missing Close column. Available: {cols}")
+            return False
 
-    sp500 = sp500[["Close"]].copy()
+    market_df = market_df[["Close"]].copy()
 
-    # 處理日期索引
-    if not isinstance(sp500.index, pd.DatetimeIndex):
-        sp500.index = pd.to_datetime(sp500.index)
+    if not isinstance(market_df.index, pd.DatetimeIndex):
+        market_df.index = pd.to_datetime(market_df.index, errors="coerce")
 
-    sp500.index = sp500.index.to_series().dt.to_period("M").dt.to_timestamp()
-    sp500.index.name = "date"
-    sp500.reset_index(inplace=True)
+    market_df = market_df.dropna(subset=["Close"])
+    if market_df.empty:
+        logging.error("[Market] No valid Close rows after normalization.")
+        return False
 
-    #  計算均值回歸
-    sp500["ma_24"] = sp500["Close"].rolling(24).mean()
-    sp500["bias"] = (sp500["Close"] - sp500["ma_24"]) / sp500["ma_24"]
+    market_df.index = market_df.index.to_series().dt.to_period("M").dt.to_timestamp()
+    market_df.index.name = "date"
+    market_df.reset_index(inplace=True)
 
-    # 定義預期回報
-    base_return = 0.08
-    sensitivity = 0.2
-    sp500["expected_return"] = base_return - (sp500["bias"] * sensitivity)
+    market_df["ma_24"] = market_df["Close"].rolling(bias_window).mean()
+    market_df["bias"] = (market_df["Close"] - market_df["ma_24"]) / market_df["ma_24"]
+    market_df["expected_return"] = base_return - (market_df["bias"] * sensitivity)
 
-    #  趨勢濾網 (Trend Filter)
-    sp500["ma_10"] = sp500["Close"].rolling(10).mean()
-    sp500["trend_signal"] = sp500["Close"] > sp500["ma_10"]
+    market_df["ma_10"] = market_df["Close"].rolling(trend_window).mean()
+    market_df["trend_signal"] = market_df["Close"] > market_df["ma_10"]
 
-    #  存檔
-    sp500["date"] = sp500["date"].dt.strftime("%Y-%m-%d")
-    sp500["expected_return"] = sp500["expected_return"].fillna(base_return)
-    sp500["trend_signal"] = sp500["trend_signal"].fillna(True)
+    market_df["date"] = market_df["date"].dt.strftime("%Y-%m-%d")
+    market_df["expected_return"] = market_df["expected_return"].fillna(expected_fallback)
+    market_df["trend_signal"] = market_df["trend_signal"].fillna(True)
 
-    output_df = sp500[["date", "Close", "expected_return", "trend_signal"]].copy()
-
-    output_df.to_csv(output_path, index=False)
-    logging.info(f"  [Market] 資料處理成功！已儲存至 {output_path}")
+    output_df = market_df[["date", "Close", "expected_return", "trend_signal"]].copy()
+    output_df.to_parquet(output_path, index=False)
+    logging.info(f"[Market] Processed data saved to {output_path}")
+    return True
 
 
 if __name__ == "__main__":
-    calc_market_return_pipeline(output_path=PathConfig.MARKET_RETURN_CSV)
+    calc_market_return_pipeline(output_path=PathConfig.MARKET_RETURN_PARQUET)

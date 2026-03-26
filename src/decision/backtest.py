@@ -7,146 +7,149 @@ import pandas as pd
 from tqdm import tqdm
 
 from config.path import PathConfig
+from config.profile import get_runtime_profile
+
+
+def _calc_max_drawdown(equity_series: pd.Series) -> float:
+    peak = equity_series.cummax()
+    drawdown = (equity_series - peak) / peak
+    return float(drawdown.min())
 
 
 def run_backtest(path: str | None = None):
+    path = path or PathConfig.FINAL_SIGNAL_PARQUET
     if not os.path.exists(path):
-        logging.error(" 錯誤：找不到數據文件，請先執行 main.py。")
-        return
+        logging.error(f"[Backtest] Signal file not found: {path}")
+        return False
 
-    logging.info(" 正在進行 Phase 4 回測：動態槓桿 (Dynamic Leverage)...")
+    logging.info("[Backtest] Running dynamic leverage backtest...")
+    profile = get_runtime_profile()
+    backtest_cfg = profile.get("decision", {}).get("backtest", {})
 
-    # 定義最大回撤計算函數
-    def calc_max_drawdown(equity_series):
-        peak = equity_series.cummax()
-        drawdown = (equity_series - peak) / peak
-        return drawdown.min()
+    risk_free_rate_annual = float(backtest_cfg.get("risk_free_rate_annual", 0.03))
+    borrowing_cost_annual = float(backtest_cfg.get("borrowing_cost_annual", 0.05))
+    bull_leverage = float(backtest_cfg.get("bull_leverage", 2.0))
+    neutral_leverage = float(backtest_cfg.get("neutral_leverage", 1.0))
 
-    with tqdm(total=5, desc="全流程回測執行中", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}, {postfix}]") as pbar:
+    with tqdm(
+        total=5,
+        desc="Backtest",
+        bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}, {postfix}]",
+    ) as pbar:
+        pbar.set_postfix_str("Loading parquet...")
+        df = pd.read_parquet(path)
+        if df.empty:
+            logging.error("[Backtest] Input data is empty.")
+            return False
 
-        # 加載數據
-        pbar.set_postfix_str("讀取數據 CSV...")
-        df = pd.read_csv(path, parse_dates=["date"])
-        df = df.sort_values("date").reset_index(drop=True)
-        time.sleep(0.3)
+        if "date" in df.columns:
+            df["date"] = pd.to_datetime(df["date"], errors="coerce")
+        df = df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+        if df.empty:
+            logging.error("[Backtest] No valid rows after date normalization.")
+            return False
         pbar.update(1)
+        time.sleep(0.2)
 
-        # 基礎指標計算
-        pbar.set_postfix_str("計算市場回報與信號平移...")
-        #  計算大盤回報 (Benchmark Return)
-        # 用 Close 價格計算
+        pbar.set_postfix_str("Preparing returns...")
+        if "Close" not in df.columns or "signal" not in df.columns:
+            logging.error("[Backtest] Missing required columns: Close/signal.")
+            return False
+
         df["pct_change"] = df["Close"].pct_change()
-
-        # 定義策略邏輯
-        # Shift 1: 用上個月的信號操作這個月
         df["signal_shifted"] = df["signal"].shift(1)
-
-        risk_free_rate_annual = 0.03  # 無風險利率 (持有現金時賺的，年化 3%)
-        borrowing_cost_annual = 0.05  # 借貸成本 (開槓桿要付的利息 + 耗損，年化 5%)
 
         rf_monthly = risk_free_rate_annual / 12
         borrow_cost_monthly = borrowing_cost_annual / 12
 
-        def calculate_strategy_return(row):
+        def calculate_strategy_return(row: pd.Series) -> float:
             sig = row["signal_shifted"]
             market_ret = row["pct_change"]
-            if pd.isna(sig): return 0  # noqa: E701
 
-            #  動態槓桿邏輯
+            if pd.isna(sig):
+                return 0.0
+            if pd.isna(market_ret):
+                market_ret = 0.0
+
             if sig == "BULL":
-                #  兩倍槓桿
-                leverage = 2.0
-                # 回報 = (市場漲跌 * 2) - (借那一半錢的利息成本)
-                # 公式: Leverage * Return - (Leverage - 1) * Cost
-                strat_ret = (market_ret * leverage) - ((leverage - 1) * borrow_cost_monthly)
-                return strat_ret
-            elif sig == "NEUTRAL":
-                # 一倍槓桿
-                return market_ret
-            else:  # BEAR
-                # 空手
-                # 持有現金賺無風險利息
-                return rf_monthly
+                leverage = bull_leverage
+                return float((market_ret * leverage) - ((leverage - 1) * borrow_cost_monthly))
+            if sig == "NEUTRAL":
+                return float(market_ret * neutral_leverage)
+            return float(rf_monthly)
 
-        time.sleep(0.3)
         pbar.update(1)
+        time.sleep(0.2)
 
-        # 策略回測執行
-        pbar.set_postfix_str("執行動態槓桿回測...")
+        pbar.set_postfix_str("Simulating strategy...")
         df["strategy_return"] = [calculate_strategy_return(row) for _, row in df.iterrows()]
         pbar.update(1)
+        time.sleep(0.2)
 
-        # 績效指標分析
-        pbar.set_postfix_str("計算淨值曲線與風險指標...")
-        # 計算淨值曲線
-        # 假設初始資金 100
-        df["benchmark_equity"] = (1 + df["pct_change"]).cumprod() * 100
+        pbar.set_postfix_str("Computing metrics...")
+        df["benchmark_equity"] = (1 + df["pct_change"].fillna(0.0)).cumprod() * 100
         df["strategy_equity"] = (1 + df["strategy_return"]).cumprod() * 100
-
-        # 填補第一筆 NaN 為 100
         df.loc[0, "benchmark_equity"] = 100
         df.loc[0, "strategy_equity"] = 100
 
-        #  計算績效指標
         total_ret_bench = (df["benchmark_equity"].iloc[-1] / 100) - 1
         total_ret_strat = (df["strategy_equity"].iloc[-1] / 100) - 1
+        mdd_bench = _calc_max_drawdown(df["benchmark_equity"])
+        mdd_strat = _calc_max_drawdown(df["strategy_equity"])
 
-        # 最大回撤
-        mdd_bench = calc_max_drawdown(df["benchmark_equity"])
-        mdd_strat = calc_max_drawdown(df["strategy_equity"])
+        bench_std = df["pct_change"].std()
+        strat_std = df["strategy_return"].std()
+        sharpe_bench = 0.0 if bench_std == 0 else float((df["pct_change"].mean() / bench_std) * (12**0.5))
+        sharpe_strat = 0.0 if strat_std == 0 else float((df["strategy_return"].mean() / strat_std) * (12**0.5))
 
-        # 夏普比率
-        # 簡單年化處理
-        if df["pct_change"].std() == 0:
-            sharpe_bench = 0
-        else:
-            sharpe_bench = (df["pct_change"].mean() / df["pct_change"].std()) * (12**0.5)
-
-        if df["strategy_return"].std() == 0:
-            sharpe_strat = 0
-        else:
-            sharpe_strat = (df["strategy_return"].mean() / df["strategy_return"].std()) * (12**0.5)
-
-        time.sleep(0.3)
         pbar.update(1)
+        time.sleep(0.2)
 
-        # 準備圖表與報告
-        pbar.set_postfix_str("渲染回測報告...")
-        time.sleep(0.3)
+        pbar.set_postfix_str("Rendering...")
         pbar.update(1)
+        time.sleep(0.2)
 
-    #  生成回測報告
     print("\n" + "=" * 50)
-    print(" 【回測：動態槓桿】")
+    print(" Dynamic Leverage Backtest")
     print("=" * 50)
-
-    label_w = 22  # 標籤寬度
-    data_w = 12  # 數據欄位寬度
-
-    # 表頭
-    print(f"{'指標名稱':<{label_w}} | {'Benchmark':^{data_w}} | {'Strategy':^{data_w}}")
-    print("-" * (label_w + data_w * 2 + 6))
-
-    # 數據行
-    print(f"{'總報酬率 (Total Ret)':<{label_w}} | {total_ret_bench * 100:>{data_w}.2f}% | {total_ret_strat * 100:>{data_w}.2f}%")
-    print(f"{'最大回撤 (Max DD)':<{label_w}} | {mdd_bench * 100:>{data_w}.2f}% | {mdd_strat * 100:>{data_w}.2f}%")
-    print(f"{'夏普比率 (Sharpe)':<{label_w}} | {sharpe_bench:>{data_w}.2f}  | {sharpe_strat:>{data_w}.2f} ")
-    print("-" * 60)
+    print(f"{'Metric':<22} | {'Benchmark':>12} | {'Strategy':>12}")
+    print("-" * 52)
+    print(f"{'Total Return':<22} | {total_ret_bench * 100:>11.2f}% | {total_ret_strat * 100:>11.2f}%")
+    print(f"{'Max Drawdown':<22} | {mdd_bench * 100:>11.2f}% | {mdd_strat * 100:>11.2f}%")
+    print(f"{'Sharpe':<22} | {sharpe_bench:>12.2f} | {sharpe_strat:>12.2f}")
+    print("-" * 52)
     print("=" * 50 + "\n")
 
-    # 7. 畫圖
-    plt.figure(figsize=(12, 6))
-    plt.plot(df["date"], df["benchmark_equity"], label="S&P 500 (1x)", color="gray", linestyle="--", alpha=0.6)
-    plt.plot(df["date"], df["strategy_equity"], label="MVP Dynamic (0x-2x)", color="red", linewidth=2)
+    try:
+        plt.figure(figsize=(12, 6))
+        plt.plot(
+            df["date"],
+            df["benchmark_equity"],
+            label="S&P 500 (1x)",
+            color="gray",
+            linestyle="--",
+            alpha=0.6,
+        )
+        plt.plot(
+            df["date"],
+            df["strategy_equity"],
+            label="MVP Dynamic (0x-2x)",
+            color="red",
+            linewidth=2,
+        )
 
-    plt.title(" Dynamic Leverage vs S&P 500", fontsize=14)
-    plt.xlabel("Date")
-    plt.ylabel("Equity (Log Scale)")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.yscale("log")  # 開啟對數座標
-    plt.show()
+        plt.title("Dynamic Leverage vs S&P 500", fontsize=14)
+        plt.xlabel("Date")
+        plt.ylabel("Equity (Log Scale)")
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        plt.yscale("log")
+        plt.show()
+    except Exception as exc:
+        logging.warning(f"[Backtest] Plot skipped due to environment issue: {exc}")
+
+    return True
 
 
 if __name__ == "__main__":
-    run_backtest(PathConfig.FINAL_SIGNAL_CSV)
+    run_backtest(PathConfig.FINAL_SIGNAL_PARQUET)
